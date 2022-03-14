@@ -94,7 +94,7 @@ def compute_normalized_to_img_trans(aspect, img_height_in_pix):
 def unproject(K, pixel_coords, depth=1.0):
     """sometimes also referred to as backproject
         pixel_coords: [n, 2] pixel locations
-        depth: [n, ] or [,] depth value. of a shape that is broadcastable with pix coords
+        depth: [n,] or [,] depth value. of a shape that is broadcastable with pix coords
     """
     K = K[0:3, 0:3]
 
@@ -104,13 +104,10 @@ def unproject(K, pixel_coords, depth=1.0):
     # this will give points with z = -1, which is exactly what you want since
     # your camera is facing the -ve z axis
     pts = inv(K) @ pixel_coords
+
+    pts = pts * depth  # [3, n] * [n,] broadcast
     pts = pts.T
-    # promote these as 3d points
     pts = as_homogeneous(pts)
-    # rays start from origin
-    origin = np.array([0, 0, 0, 1])
-    rays = pts - origin
-    pts = rays * depth + origin
     return pts
 
 """
