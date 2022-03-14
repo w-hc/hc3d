@@ -91,8 +91,11 @@ def compute_normalized_to_img_trans(aspect, img_height_in_pix):
     return ndc_to_img
 
 
-def rays_through_pixels(K, pixel_coords):
-    # pixel coords: [n, 2] pix locations
+def unproject(K, pixel_coords, depth=1.0):
+    """sometimes also referred to as backproject
+        pixel_coords: [n, 2] pixel locations
+        depth: [n, ] or [,] depth value. of a shape that is broadcastable with pix coords
+    """
     K = K[0:3, 0:3]
 
     pixel_coords = as_homogeneous(pixel_coords)
@@ -105,9 +108,10 @@ def rays_through_pixels(K, pixel_coords):
     # promote these as 3d points
     pts = as_homogeneous(pts)
     # rays start from origin
-    rays = pts - np.array([0, 0, 0, 1])
-    return rays
-
+    origin = np.array([0, 0, 0, 1])
+    rays = pts - origin
+    pts = rays * depth + origin
+    return pts
 
 """
 these two functions are changed so that they can handle arbitrary number of
@@ -122,10 +126,12 @@ def homogenize(pts):
     return pts
 
 
-def as_homogeneous(pts):
+def as_homogeneous(pts, lib=None):
     # pts: [..., d]
     *front, d = pts.shape
-    points = np.ones((*front, d + 1))
+    if lib is None:  # can also be torch
+        lib=np
+    points = lib.ones((*front, d + 1))
     points[..., :d] = pts
     return points
 

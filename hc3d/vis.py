@@ -2,7 +2,7 @@ import open3d as o3d
 import numpy as np
 from numpy.linalg import inv
 from .render import (
-    camera_pose, rays_through_pixels,
+    camera_pose, unproject,
 )
 
 o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
@@ -141,7 +141,8 @@ def compute_axis_aligned_bbox(xyz):
 
 def draw_camera(
     K, pose, img_w, img_h, scale=0.3,
-    top_left_corner=[-0.5, -0.5], color=[0.8, 0.2, 0.8]
+    top_left_corner=[-0.5, -0.5], color=[0.8, 0.2, 0.8],
+    return_raw=False
 ):
     tl_x, tl_y = top_left_corner
     corner_pixels = np.array([
@@ -151,19 +152,24 @@ def draw_camera(
         [tl_x, tl_y + img_h],  # bottom left
     ])
 
-    rays = rays_through_pixels(K, corner_pixels)
-    origin = np.array([0, 0, 0, 1])
-    pts = rays * scale + origin
-    pts = np.concatenate([origin.reshape(1, -1), pts], axis=0)
+    pts = unproject(K, corner_pixels, depth=scale)
+    pts = np.concatenate([
+        np.array([0, 0, 0, 1]).reshape(1, -1),
+        pts
+    ], axis=0)  # origin, followed by 4 img corners
     pts = pts @ pose.T
     pts = pts[:, :3]
 
     assert pts.shape == (5, 3)
 
-    lines = [
+    lines = np.array([
         [0, 1], [0, 2], [0, 3], [0, 4],
         [1, 2], [2, 3], [3, 4], [4, 1]
-    ]
+    ], dtype=int)
+
+    if return_raw:
+        return pts, lines
+
     colors = [color for _ in range(len(lines))]
     line_set = o3d.geometry.LineSet(
         points=o3d.utility.Vector3dVector(pts),

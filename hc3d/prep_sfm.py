@@ -15,7 +15,7 @@ from .render import (
     camera_pose,
     as_homogeneous,
     homogenize,
-    rays_through_pixels
+    unproject
 )
 
 
@@ -64,7 +64,7 @@ def process():
         pts_2d = pts_2d[inbound]
         candidates = candidates[inbound]
 
-        rays = rays_through_pixels(K, pts_2d)
+        rays = unproject(K, pts_2d)
         rays = rays @ pose.T
 
         rays = rays[:, :3]
