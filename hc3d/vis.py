@@ -5,7 +5,7 @@ from .render import (
     camera_pose, unproject,
 )
 
-o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
+# o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
 
 
 class OpenVisWrapper():
@@ -154,8 +154,8 @@ def draw_camera(
 
     pts = unproject(K, corner_pixels, depth=scale)
     pts = np.concatenate([
+        pts,
         np.array([0, 0, 0, 1]).reshape(1, -1),
-        pts
     ], axis=0)  # origin, followed by 4 img corners
     pts = pts @ pose.T
     pts = pts[:, :3]
@@ -163,8 +163,8 @@ def draw_camera(
     assert pts.shape == (5, 3)
 
     lines = np.array([
-        [0, 1], [0, 2], [0, 3], [0, 4],
-        [1, 2], [2, 3], [3, 4], [4, 1]
+        [0, 1], [1, 2], [2, 3], [3, 0],
+        [4, 0], [4, 1], [4, 2], [4, 3],
     ], dtype=int)
 
     if return_raw:
