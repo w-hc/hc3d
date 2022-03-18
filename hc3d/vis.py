@@ -179,6 +179,75 @@ def draw_camera(
     return line_set
 
 
+class CameraCone():
+    def __init__(
+        self, K, pose, img_w, img_h, scale=0.3,
+        top_left_corner=[-0.5, -0.5], color=[0.8, 0.2, 0.8],
+    ):
+        tl_x, tl_y = top_left_corner
+        corner_pixels = np.array([
+            [tl_x, tl_y],  # top left
+            [tl_x + img_w, tl_y],  # top right
+            [tl_x + img_w, tl_y + img_h],  # bottom right
+            [tl_x, tl_y + img_h],  # bottom left
+        ])
+
+        pts = unproject(K, corner_pixels, depth=scale)
+        pts = np.concatenate([
+            pts,
+            np.array([0, 0, 0, 1]).reshape(1, -1),
+        ], axis=0)  # origin, followed by 4 img corners
+        pts = pts @ pose.T
+        pts = pts[:, :3]
+
+        self.pts = pts.astype(np.float32)
+        self.color = color
+
+    def as_line_set(self):
+        lines = np.array([
+            [0, 1], [1, 2], [2, 3], [3, 0],
+            [4, 0], [4, 1], [4, 2], [4, 3],
+        ], dtype=np.int32)
+        colors = np.array([self.color] * len(lines), dtype=np.float32)
+
+        lset = o3d.t.geometry.LineSet()
+        lset.point['positions'] = self.pts
+        lset.line['indices'] = lines
+        lset.line['colors'] = colors
+        return lset
+
+    def as_view_plane(self, fname_or_img):
+        corner_pts = self.pts[:, :4]
+        verts = corner_pts
+        conns = np.array([
+            [0, 2, 1],
+            [0, 3, 2],
+        ], dtype=np.int32)
+        uvs = np.array([
+            [(0, 1), (1, 0), (1, 1)],
+            [(0, 1), (0, 0), (1, 0)],
+        ], dtype=np.float32)  # note uv 0, 0 is at bottom left of img
+
+        mesh = o3d.t.geometry.TriangleMesh()
+        mesh.vertex['positions'] = verts
+        mesh.triangle['indices'] = conns
+        mesh.triangle["texture_uvs"] = uvs
+
+        mat = mesh.material
+        mat.material_name = "defaultUnlit"
+
+        img = None
+        if isinstance(fname_or_img, str):
+            img = o3d.t.io.read_image(fname_or_img)
+        else:
+            img = fname_or_img
+
+        mat.texture_maps['albedo'] = img
+        assert mat.is_valid()
+
+        return mesh
+
+
 def quick_vis_3d(*geoms):
     renderer = OpenVisWrapper()
     for obj in geoms:
