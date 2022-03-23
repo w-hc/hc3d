@@ -25,7 +25,7 @@ def batch_img_resize(imgs, new_h=50):
     return imgs
 
 
-def throw_outliers(pts, thresh=0.1):
+def outlier_mask(pts, thresh=0.1):
     pts = pts[:, :3]
     mask = (np.abs(pts) > thresh).any(axis=1)
     mask = ~mask
