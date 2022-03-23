@@ -216,7 +216,7 @@ class CameraCone():
         lset.line['colors'] = colors
         return lset
 
-    def as_view_plane(self, fname_or_img):
+    def as_view_plane(self, fname_or_npimg):
         corner_pts = self.pts[:, :4]
         verts = corner_pts
         conns = np.array([
@@ -237,10 +237,10 @@ class CameraCone():
         mat.material_name = "defaultUnlit"
 
         img = None
-        if isinstance(fname_or_img, str):
-            img = o3d.t.io.read_image(fname_or_img)
+        if isinstance(fname_or_npimg, str):
+            img = o3d.t.io.read_image(fname_or_npimg)
         else:
-            img = fname_or_img
+            img = o3d.t.geometry.Image(fname_or_npimg)
 
         mat.texture_maps['albedo'] = img
         assert mat.is_valid()
