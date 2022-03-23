@@ -34,6 +34,12 @@ def main():
 
     geoms = []
     for i, (po, K) in enumerate(zip(recons["poses"], recons["Ks"])):
+        # # purposely set K wrong using negative-z convention; what happens to cones?
+        # K = np.array([
+        #     [K[0, 0], 0, -K[0, 2]],
+        #     [0, K[1, 1], -K[1, 2]],
+        #     [0, 0, -1],
+        # ])
         cne = CameraCone(K, po, W, H, top_left_corner=[0, 0], scale=0.2)
         lset = cne.as_line_set()
         view = cne.as_view_plane(imgs[i])
