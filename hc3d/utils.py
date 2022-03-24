@@ -34,6 +34,6 @@ def inlier_mask(pts, std_multiple=5.0):
     n_before = len(pts)
     n_after = mask.sum()
     percent = n_after / n_before * 100
-    print(f"inlier: retain {n_after} / {n_after}; {percent:.2f}% of points")
+    print(f"inlier: retain {n_after} / {n_before}; {percent:.2f}% of points")
 
     return mask
