@@ -16,7 +16,7 @@ def main():
 
     pts = recons['pts_xyz']
     rgb = recons['pts_rgb'] / 255.
-    mask = inlier_mask(pts, 5.0)
+    mask = inlier_mask(pts)
     pts = pts[mask]
     rgb = rgb[mask]
 
