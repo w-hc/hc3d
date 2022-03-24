@@ -25,8 +25,15 @@ def batch_img_resize(imgs, new_h=50):
     return imgs
 
 
-def outlier_mask(pts, thresh=0.1):
+def inlier_mask(pts, std_multiple=5.0):
     pts = pts[:, :3]
-    mask = (np.abs(pts) > thresh).any(axis=1)
-    mask = ~mask
+    centroid = pts.mean(axis=0)
+    dist = np.linalg.norm(pts - centroid, axis=1)
+    mask = (dist < (dist.mean() + dist.std() * std_multiple))
+
+    n_before = len(pts)
+    n_after = mask.sum()
+    percent = n_after / n_before * 100
+    print(f"inlier: retain {n_after} / {n_after}; {percent:.2f}% of points")
+
     return mask

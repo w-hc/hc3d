@@ -5,7 +5,7 @@ from PIL import Image
 
 from fabric.io import load_object
 from hc3d.vis import CameraCone
-from hc3d.utils import batch_img_resize, outlier_mask
+from hc3d.utils import batch_img_resize, inlier_mask
 
 
 def main():
@@ -16,7 +16,7 @@ def main():
 
     pts = recons['pts_xyz']
     rgb = recons['pts_rgb'] / 255.
-    mask = outlier_mask(pts, 5.0)
+    mask = inlier_mask(pts, 5.0)
     pts = pts[mask]
     rgb = rgb[mask]
 
