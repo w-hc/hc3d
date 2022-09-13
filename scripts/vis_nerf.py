@@ -1,8 +1,8 @@
+import json
 import numpy as np
 from numpy.linalg import inv
 from pathlib import Path
-from load_blender import load_blender_data
-from load_llff import load_llff_data
+import imageio
 import open3d as o3d
 
 from hc3d.vis import CameraCone
@@ -59,21 +59,16 @@ def test_rays(H, W, K):
 
 
 def plot_inward_facing_views():
-    imgs, poses, render_poses, [H, W, f], i_split = load_llff()
-    print("data loaded")
+    # imgs, poses, render_poses, [H, W, f], i_split = load_llff()
+    imgs, K, poses = load_blender("train")
+    H, W = imgs[0].shape[:2]
 
-    train_inds, val_inds, test_inds = i_split
+    downsize_hw = 10
+    imgs = batch_img_resize(imgs, downsize_hw)
 
     cam_locs = poses[:, :3, -1]
     radius = np.linalg.norm(cam_locs, axis=1)
-
-    imgs = batch_img_resize(imgs, 10)
-
-    K = np.array([
-        [f, 0, -W / 2],
-        [0, -f, -H / 2],
-        [0, 0, -1]
-    ])
+    # print(f"scene radius {radius}")
 
     # test_rays(H, W, K)
 
@@ -95,26 +90,33 @@ def plot_inward_facing_views():
 
     cones = []
 
-    for inx in train_inds:
-        po = poses[inx]
-        im = imgs[inx]
+    m = load_mesh()
+    cones.append(m)
+
+    for i in range(len(imgs)):
+        po = poses[i]
+        im = imgs[i]
         geom = generate_cam(po, [1, 0, 0], im)
         cones.extend(geom)
 
-        rays = shoot_rays(K, po)
-        cones.extend([rays])
+        # rays = shoot_rays(K, po)
+        # cones.extend([rays])
 
-    # for inx in val_inds:
-    #     po = poses[inx]
-    #     im = imgs[inx]
-    #     geom = generate_cam(po, [0, 1, 0], im)
-    #     cones.extend(geom)
+    imgs, K, poses = load_blender("val")
+    imgs = batch_img_resize(imgs, downsize_hw)
+    for i in range(len(imgs)):
+        po = poses[i]
+        im = imgs[i]
+        geom = generate_cam(po, [0, 1, 0], im)
+        cones.extend(geom)
 
-    # for inx in test_inds:
-    #     po = poses[inx]
-    #     im = imgs[inx]
-    #     geom = generate_cam(po, [0, 0, 1], im)
-    #     cones.extend(geom)
+    imgs, K, poses = load_blender("test")
+    imgs = batch_img_resize(imgs, downsize_hw)
+    for i in range(len(imgs)):
+        po = poses[i]
+        im = imgs[i]
+        geom = generate_cam(po, [0, 0, 1], im)
+        cones.extend(geom)
 
     # for po in render_poses:
     #     geom = generate_cam(po, [0, 1, 0])
@@ -123,45 +125,94 @@ def plot_inward_facing_views():
     o3d.visualization.draw(cones, show_skybox=False)
 
 
-def load_blender():
-    # root = Path('./data/nerf_synthetic/lego')
-    root = Path('/scratch/nerf_data/nerf_synthetic/lego')
-    imgs, poses, render_poses, hwf, i_split = \
-        load_blender_data(root, half_res=False)
-    render_poses = render_poses.numpy()
-    return imgs, poses, render_poses, hwf, i_split
+# def load_llff():
+#     from load_llff import load_llff_data
+#     root = Path('./data/nerf_llff_data/fern')
+#     images, poses, bds, render_poses, i_test = load_llff_data(
+#         root, factor=8, recenter=True, bd_factor=0.75,
+#         spherify=False, path_zflat=False
+#     )
+#     hwf = poses[0, :3, -1]
+#     poses = poses[:, :3, :4]
+
+#     if not isinstance(i_test, list):
+#         i_test = [i_test]
+
+#     llffhold = 8
+#     if llffhold > 0:
+#         print('Auto LLFF holdout,', llffhold)
+#         i_test = np.arange(images.shape[0])[::llffhold]
+
+#     i_val = i_test
+#     i_train = np.array([
+#         i for i in np.arange(int(images.shape[0]))
+#         if (i not in i_test and i not in i_val)
+#     ])
+
+#     n = poses.shape[0]
+#     full_poses = np.zeros((n, 4, 4))
+#     full_poses[:, 3, 3] = 1
+#     full_poses[:, :3, :4] = poses
+
+#     return images, full_poses, render_poses, hwf, [i_train, i_val, i_test]
 
 
-def load_llff():
-    root = Path('./data/nerf_llff_data/fern')
-    images, poses, bds, render_poses, i_test = load_llff_data(
-        root, factor=8, recenter=True, bd_factor=0.75,
-        spherify=False, path_zflat=False
-    )
-    hwf = poses[0, :3, -1]
-    poses = poses[:, :3, :4]
+def blend_rgba(img):
+    img = img[..., :3] * img[..., -1:] + (1. - img[..., -1:])  # blend A to RGB
+    return img
 
-    if not isinstance(i_test, list):
-        i_test = [i_test]
 
-    llffhold = 8
-    if llffhold > 0:
-        print('Auto LLFF holdout,', llffhold)
-        i_test = np.arange(images.shape[0])[::llffhold]
+def load_blender(split, scene="lego", half_res=False):
+    assert split in ("train", "val", "test")
 
-    i_val = i_test
-    i_train = np.array([
-        i for i in np.arange(int(images.shape[0]))
-        if (i not in i_test and i not in i_val)
-    ])
+    root = "/scratch"
+    root = Path(root) / "nerf_data/nerf_synthetic" / scene
 
-    n = poses.shape[0]
-    full_poses = np.zeros((n, 4, 4))
-    full_poses[:, 3, 3] = 1
-    full_poses[:, :3, :4] = poses
+    with open(root / f'transforms_{split}.json', "r") as f:
+        meta = json.load(f)
 
-    return images, full_poses, render_poses, hwf, [i_train, i_val, i_test]
+    imgs, poses = [], []
+
+    for frame in meta['frames']:
+        file_name = root / f"{frame['file_path']}.png"
+        im = imageio.imread(file_name)
+        c2w = frame['transform_matrix']
+
+        imgs.append(im)
+        poses.append(c2w)
+
+    imgs = (np.array(imgs) / 255.).astype(np.float32)  # (RGBA) imgs
+    imgs = blend_rgba(imgs)
+    poses = np.array(poses).astype(float)
+
+    H, W = imgs[0].shape[:2]
+    camera_angle_x = float(meta['camera_angle_x'])
+    f = 1 / np.tan(camera_angle_x / 2) * (W / 2)
+
+    if half_res:
+        raise NotImplementedError()
+
+    K = np.array([
+        [f, 0, -(W/2 - 0.5)],
+        [0, -f, -(H/2 - 0.5)],
+        [0, 0, -1]
+    ])  # note OpenGL -ve z convention;
+
+    return imgs, K, poses
+
+
+def load_mesh():
+    p = Path("~/lego.ply").expanduser()
+    p = str(p)
+    mesh = o3d.io.read_triangle_mesh(p)
+    # mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh)
+
+    # verts = mesh.vertex['positions'].numpy()
+    # print(mesh)
+
+    return mesh
 
 
 if __name__ == "__main__":
     plot_inward_facing_views()
+    # load_mesh()
