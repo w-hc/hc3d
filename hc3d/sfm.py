@@ -6,7 +6,7 @@ import torch.optim as optim
 from lietorch import SE3
 from scipy.spatial.transform import Rotation as rot
 
-from .vis import vis_3d, o3d_pc, draw_camera
+from .vis import quick_vis_3d, o3d_pc, draw_camera
 from .render import (
     as_homogeneous,
     homogenize
@@ -294,8 +294,8 @@ def disambiguate_four_chirality_by_triangulation(four, x1s, x2s, full_K, draw_co
         num_infront[i] = nv1 + nv2
         four_pose_pairs.append((p1, p2))
         if draw_config:
-            vis_3d(
-                1500, 1500, o3d_pc(throw_outliers(pts)),
+            quick_vis_3d(
+                o3d_pc(throw_outliers(pts)),
                 draw_camera(full_K, p1, 1600, 1200),
                 draw_camera(full_K, p2, 1600, 1200),
             )

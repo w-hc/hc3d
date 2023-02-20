@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-from render import homogenize
+from .render import homogenize
 from matplotlib import cm
 
 

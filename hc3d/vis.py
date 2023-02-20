@@ -140,8 +140,8 @@ def compute_axis_aligned_bbox(xyz):
 
 
 def draw_camera(
-    K, pose, img_w, img_h, scale=0.3,
-    top_left_corner=[-0.5, -0.5], color=[0.8, 0.2, 0.8],
+    K, pose, img_w, img_h, scale=0.3, color=[0.8, 0.2, 0.8],
+    top_left_corner=[-0.5, -0.5],
     return_raw=False
 ):
     tl_x, tl_y = top_left_corner

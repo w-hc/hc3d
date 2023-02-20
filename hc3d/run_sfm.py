@@ -8,7 +8,7 @@ from PIL import Image
 
 import open3d as o3d
 
-from .vis import vis_3d, o3d_pc, draw_camera
+from .vis import quick_vis_3d, o3d_pc, draw_camera
 from .mpl_interactive import Visualizer as TwoViewVis
 from .sfm import (
     t_and_R_from_pose_pair,
@@ -95,8 +95,8 @@ class Problems():
         fname = str(DATA_ROOT / "optimus_prime.obj")
         mesh = o3d.io.read_triangle_mesh(fname, False)
 
-        vis_3d(
-            1500, 1500, mesh, o3d_pc(pts_3d),
+        quick_vis_3d(
+            mesh, o3d_pc(pts_3d),
             draw_camera(K, pose1, img_w, img_h, scale=10),
             draw_camera(K, pose2, img_w, img_h, scale=10),
         )
@@ -138,10 +138,10 @@ class Problems():
         vis.vis(img1, img2, F)
 
     def q10(self):
-        self.sfm_pipeline(draw_config=False, use_BA=False, final_vis=True)
+        self.sfm_pipeline(draw_config=True, use_BA=False, final_vis=True)
 
     def q12(self):
-        self.sfm_pipeline(use_noise=True, use_BA=True, final_vis=False)
+        self.sfm_pipeline(use_noise=True, use_BA=True, final_vis=True)
 
     def sfm_pipeline(self, use_noise=False, use_BA=False, draw_config=False, final_vis=False):
         pts_3d = self.pts_3d
@@ -182,8 +182,7 @@ class Problems():
             green = (0, 1, 0)
             blue = (0, 0, 1)
 
-            vis_3d(
-                1500, 1500,
+            quick_vis_3d(
                 o3d_pc(pts_3d, red),
                 o3d_pc(pred_pts, green),
                 draw_camera(K, pose1, img_w, img_h, 10, red),
@@ -192,8 +191,7 @@ class Problems():
                 draw_camera(K, p2, img_w, img_h, 10, blue),
             )
 
-            # vis_3d(
-            #     1500, 1500,
+            # quick_vis_3d(
             #     o3d_pc(pred_pts, green),
             #     draw_camera(K, p1, img_w, img_h, 10, blue),
             #     draw_camera(K, p2, img_w, img_h, 10, blue),
@@ -213,7 +211,7 @@ class Problems():
             for i in range(n)
         ]
 
-        vis_3d(1500, 1500, mesh, o3d_pc(self.data.pts_3d), *cams)
+        quick_vis_3d(mesh, o3d_pc(self.data.pts_3d), *cams)
 
     def show_visib(self):
         plt.imshow(self.data.visibility, aspect="auto", interpolation='nearest')
@@ -247,12 +245,12 @@ def flip_correspondence(x1s, perc):
 
 def main():
     engine = Problems()
-    # engine.teaser()
-    # engine.show_visib()
+    engine.teaser()
+    engine.show_visib()
     # engine.q2()
     # engine.q4()
-    # engine.q10()
-    engine.q12()
+    engine.q10()
+    # engine.q12()
 
 
 if __name__ == "__main__":
