@@ -7,10 +7,20 @@ from fabric.io import load_object
 from hc3d.vis import CameraCone
 from hc3d.utils import batch_img_resize, inlier_mask
 
+import click
 
-def main():
-    img_root = Path("/scratch/colmap_data/south-building/images")
-    recons = load_object("recons.pkl")
+
+@click.command()
+@click.option(
+    "-r", "--recons", help="the serialized reconstruction object", type=str
+)
+@click.option(
+    "-i", "--img_root", help="image directory",
+    default="/scratch/nerf_data/360_v2/garden/images_8"
+)
+def main(recons, img_root):
+    img_root = Path(img_root)
+    recons = load_object(recons)
 
     print(recons.keys())
 
@@ -21,6 +31,7 @@ def main():
     rgb = rgb[mask]
 
     pcd = o3d.t.geometry.PointCloud()
+    # o3d is very finicky abt numeric type; little auto-conversion
     pcd.point["positions"] = o3d.core.Tensor(pts.astype(np.float32))
     pcd.point["colors"] = o3d.core.Tensor(rgb.astype(np.float32))
 
@@ -29,12 +40,16 @@ def main():
     imgs = np.array([
         np.array(Image.open(img_root / fn)) for fn in fnames
     ])
-    H, W = imgs.shape[1:3]
+
     imgs = batch_img_resize(imgs, 100)
 
     geoms = []
-    for i, (po, K) in enumerate(zip(recons["poses"], recons["Ks"])):
-        # # purposely set K wrong using negative-z convention; what happens to cones?
+    for i, (po, K, (H, W)) in enumerate(zip(
+        recons["poses"], recons["Ks"], recons["HWs"]
+    )):
+        # # note: COLMAP uses OpenCV, right-handed, z-forward convention.
+        # # my code here is agnostic to convention; things work out.
+        # # But can purposely set K wrong using negative-z convention; what happens to cones?
         # K = np.array([
         #     [K[0, 0], 0, -K[0, 2]],
         #     [0, -K[1, 1], -K[1, 2]],
