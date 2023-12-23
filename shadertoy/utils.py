@@ -53,14 +53,16 @@ def per_batch_start_end(n, bs):
 
 
 def t_max(tsr, axis):
+    # syntax sugar
     return torch.max(tsr, axis=axis)[0]
 
 
 def make_tsr(arr):
+    # syntax sugar
     return torch.tensor(arr, device=device, dtype=torch.float)
 
 
-def smooth_step(xs, edge0, edge1):
+def smooth_step(edge0, edge1, xs):
     """
     https://thebookofshaders.com/glossary/?search=smoothstep
     Smooth Hermite interpolation between [0, 1] when edge0 < x < edge1
@@ -70,3 +72,12 @@ def smooth_step(xs, edge0, edge1):
     ts = torch.clamp(ts, 0., 1.)
     ts = ts * ts * (3. - 2. * ts)
     return ts
+
+
+def step(edge, xs):
+    xs = (xs > edge).type(torch.float32)
+    return xs
+
+
+def fract(xs):
+    return xs - torch.floor(xs)
