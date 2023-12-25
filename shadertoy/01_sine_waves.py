@@ -2,7 +2,7 @@
 this is a pytorch imitation of the shadertoy programming environment for procedural graphics / image generation
 """
 import torch
-from utils import entry, device, two_pi, make_tsr, cos
+from utils import entry, device, two_pi, make_tsr, cos, coords_take
 
 
 def dummy_shader(xy_coords, canvas_wh, t):
@@ -33,10 +33,7 @@ def horizontal_sine_wave(xy_coords, canvas_wh, t):
 
 def artsy_sine(xy_coords, canvas_wh, t):
     xy_coords = xy_coords / canvas_wh
-    xs, ys = xy_coords.T
-
-    xyx = torch.stack([xs, ys, xs], axis=-1)
-
+    xyx = coords_take(xy_coords, "xyx")
     rgbs = 0.5 + 0.5 * cos(10 * t + xyx + make_tsr([0, 2, 4]))
     return rgbs
 

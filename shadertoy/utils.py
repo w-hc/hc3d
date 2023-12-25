@@ -13,7 +13,7 @@ two_pi = 2 * pi  # frequently used constant
 def entry(
     shading_func,
     canvas_wh=(256, 128), num_frames=1, fps=1,
-    fname="out", batch_size=4096,
+    fname="out", batch_size=4096 * 100,
 ):
     W, H = canvas_wh
     n = W * H
@@ -21,7 +21,7 @@ def entry(
     xy_coords = np.stack([xs, ys], axis=-1).reshape(n, 2)
 
     canvas_wh = torch.tensor([W, H], dtype=int).to(device)
-    xy_coords = torch.as_tensor(xy_coords).to(device)
+    xy_coords = torch.as_tensor(xy_coords, dtype=torch.float32).to(device)
 
     frames = []
     for i in tqdm(range(num_frames)):
@@ -62,6 +62,16 @@ def make_tsr(arr):
     return torch.tensor(arr, device=device, dtype=torch.float)
 
 
+def to_t(*args):
+    ret = []
+    for elem in args:
+        target_dtype = torch.float32 if np.issubdtype(elem.dtype, np.floating) else None
+        ret.append(
+            torch.as_tensor(elem, dtype=target_dtype, device=device)
+        )
+    return ret
+
+
 def smooth_step(edge0, edge1, xs):
     """
     https://thebookofshaders.com/glossary/?search=smoothstep
@@ -81,3 +91,12 @@ def step(edge, xs):
 
 def fract(xs):
     return xs - torch.floor(xs)
+
+
+def coords_take(arr, symbols):
+    # e.g. "xzxzy" will return tsr of shape [n, 5]
+    symb_to_inx = {
+        "x": 0, "y": 1, "z": 2
+    }
+    chosen = [symb_to_inx[s] for s in symbols]
+    return arr[:, chosen]

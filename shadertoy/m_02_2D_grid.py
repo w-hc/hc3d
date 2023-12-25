@@ -66,7 +66,8 @@ def integral_01_oscillate(x, p=0.5):
 
 def integrated_period_step(xy_coords, dx_dy, p):
     integrated_xys = (
-        integral_01_oscillate(xy_coords + dx_dy, p) - integral_01_oscillate(xy_coords, p)
+        integral_01_oscillate(xy_coords + 0.5*dx_dy, p) -
+        integral_01_oscillate(xy_coords - 0.5*dx_dy, p)
     ) / dx_dy
     xs, ys = integrated_xys.T
     return xs, ys
