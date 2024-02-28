@@ -1,11 +1,22 @@
-import open3d as o3d
+# import open3d as o3d
+from io import BytesIO
+from pathlib import Path
+
+import k3d
 import numpy as np
 from numpy.linalg import inv
+from PIL import Image
 from .render import (
     camera_pose, unproject,
 )
 
 # o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
+
+
+def img_to_bytes(img, format="PNG", **kwargs):
+    with BytesIO() as f:
+        img.save(f, format=format, **kwargs)
+        return f.getvalue()
 
 
 class OpenVisWrapper():
@@ -203,7 +214,46 @@ class CameraCone():
         self.pts = pts.astype(np.float32)
         self.color = color
 
-    def as_line_set(self):
+    def as_k3d_lineset(self):
+        inds = np.array([
+            [0, 1], [1, 2], [2, 3], [3, 0],
+            [4, 0], [4, 1], [4, 2], [4, 3],
+        ], dtype=np.int32)
+        lines = k3d.lines(self.pts, inds, indices_type='segment')
+        return lines
+
+    def as_k3d_viewplane(self, fname_or_npimg):
+        corner_pts = self.pts[:, :4]
+        verts = corner_pts
+        conns = np.array([
+            [0, 2, 1],
+            [0, 3, 2],
+        ], dtype=np.int32)
+        # note here uv is per-vertex; not face driven; strange
+        # [0, 0] at top left of the texture img; my corners are ordered clockwise
+        uvs = np.array([(0, 0), (1, 0), (1, 1), (0, 1)], dtype=np.float32)
+
+        if isinstance(fname_or_npimg, (str, Path)):
+            # always read in, then convert to jpeg bytes
+            img = np.array(Image.open(str(fname_or_npimg)))
+        else:
+            img = np.array(fname_or_npimg)
+        del fname_or_npimg
+
+        img = Image.fromarray(img)
+        im_bytes = img_to_bytes(img, format="JPEG", quality=50)
+
+        mesh = k3d.mesh(
+            verts, conns, side="double", uvs=uvs,
+            texture=im_bytes, texture_file_format="jpeg",
+            # needed so that default blue is not blended into texture
+            # this is a bug that the devs should fix
+            color=0xffffff
+        )
+        return mesh
+
+    def _as_line_set(self):
+        raise NotImplementedError("deprecated; use k3d")
         lines = np.array([
             [0, 1], [1, 2], [2, 3], [3, 0],
             [4, 0], [4, 1], [4, 2], [4, 3],
@@ -216,7 +266,8 @@ class CameraCone():
         lset.line['colors'] = colors
         return lset
 
-    def as_view_plane(self, fname_or_npimg):
+    def _as_view_plane(self, fname_or_npimg):
+        # raise NotImplementedError("deprecated; use k3d")
         corner_pts = self.pts[:, :4]
         verts = corner_pts
         conns = np.array([
