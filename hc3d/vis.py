@@ -13,6 +13,14 @@ from .render import (
 # o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
 
 
+def rgb256_to_hex(rgb):
+    """k3d requires color to be specified in hex"""
+    # rgb: list of 3 numbers, each in [0,255]
+    # return int('0x%02x%02x%02x' % (rgb[0], rgb[1], rgb[2]), 16)
+    R, G, B = rgb
+    return (R << 16) + (G << 8) + B
+
+
 def img_to_bytes(img, format="PNG", **kwargs):
     with BytesIO() as f:
         img.save(f, format=format, **kwargs)
@@ -193,7 +201,7 @@ def draw_camera(
 class CameraCone():
     def __init__(
         self, K, pose, img_w, img_h, scale=0.3,
-        top_left_corner=[-0.5, -0.5], color=[0.8, 0.2, 0.8],
+        top_left_corner=[-0.5, -0.5], color=[200, 40, 200],
     ):
         tl_x, tl_y = top_left_corner
         corner_pixels = np.array([
@@ -212,26 +220,37 @@ class CameraCone():
         pts = pts[:, :3]
 
         self.pts = pts.astype(np.float32)
+
+        color = np.array(color)
+        assert np.issubsctype(color.dtype, np.integer) \
+            and color.min() >= 0 and color.max() < 255
         self.color = color
 
     def as_k3d_lineset(self):
-        inds = np.array([
+        inds = [
             [0, 1], [1, 2], [2, 3], [3, 0],
             [4, 0], [4, 1], [4, 2], [4, 3],
-        ], dtype=np.int32)
-        lines = k3d.lines(self.pts, inds, indices_type='segment')
+        ]
+
+        # .tolist() so that dtype is not np.int64, but regular int
+        # k3d demands regular int
+        color = rgb256_to_hex(self.color.tolist())
+
+        lines = k3d.lines(
+            self.pts, inds, indices_type='segment', color=color
+        )
         return lines
 
     def as_k3d_viewplane(self, fname_or_npimg):
         corner_pts = self.pts[:, :4]
         verts = corner_pts
-        conns = np.array([
+        conns = [
             [0, 2, 1],
             [0, 3, 2],
-        ], dtype=np.int32)
+        ]
         # note here uv is per-vertex; not face driven; strange
         # [0, 0] at top left of the texture img; my corners are ordered clockwise
-        uvs = np.array([(0, 0), (1, 0), (1, 1), (0, 1)], dtype=np.float32)
+        uvs = [(0, 0), (1, 0), (1, 1), (0, 1)]
 
         if isinstance(fname_or_npimg, (str, Path)):
             # always read in, then convert to jpeg bytes
@@ -258,6 +277,7 @@ class CameraCone():
             [0, 1], [1, 2], [2, 3], [3, 0],
             [4, 0], [4, 1], [4, 2], [4, 3],
         ], dtype=np.int32)
+        print("warn: expecting float color in [0, 1]. But the API is changed to take [0, 255]")
         colors = np.array([self.color] * len(lines), dtype=np.float32)
 
         lset = o3d.t.geometry.LineSet()
