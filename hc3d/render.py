@@ -7,10 +7,17 @@ def normalize(v):
     return v / norm(v)
 
 
-def camera_pose(eye, front, up):
-    z = normalize(-1 * front)
-    x = normalize(cross(up, z))
-    y = normalize(cross(z, x))
+def camera_pose(eye, front, up, convention="gl"):
+    if convention == "gl":
+        z = normalize(-1 * front)
+        x = normalize(cross(up, z))
+        y = normalize(cross(z, x))
+    elif convention == "opencv":
+        z = normalize(front)
+        x = normalize(cross(z, up))
+        y = normalize(cross(z, x))
+    else:
+        raise ValueError("either gl or opencv")
 
     # convert to col vector
     x = x.reshape(-1, 1)
@@ -25,10 +32,10 @@ def camera_pose(eye, front, up):
     return pose
 
 
-def compute_extrinsics(eye, front, up):
-    pose = camera_pose(eye, front, up)
-    world_2_cam = inv(pose)
-    return world_2_cam
+def compute_extrinsics(eye, front, up, convention="gl"):
+    cam2world = camera_pose(eye, front, up, convention)
+    world2cam = inv(cam2world)
+    return world2cam
 
 
 def compute_intrinsics(aspect_ratio, fov, img_height_in_pix):
