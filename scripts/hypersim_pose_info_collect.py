@@ -5,7 +5,7 @@ from pathlib import Path
 from tqdm import tqdm
 import csv
 import torch
-# import einops
+import fire
 
 
 def load_single_traj_poses(cam_traj_dir):
@@ -29,7 +29,10 @@ def load_single_traj_poses(cam_traj_dir):
 
     front = lookat - pos
     front = front / np.linalg.norm(front, axis=1, keepdims=True)
-    if not np.allclose(front, -Rs[:, :, -1], atol=1e-5):  # -ve z is front
+    neg_zs = -Rs[:, :, -1]  # -ve z is front
+    # see https://github.com/apple/ml-hypersim/issues/67
+    # the 0-th front is not expected to be aligned
+    if not np.allclose(front[1:], neg_zs[1:], atol=1e-5):
         print(f"warning: {cam_traj_dir} lookat and R mismatch")
 
     Ts = pos
@@ -89,5 +92,24 @@ def load_all_poses():
     torch.save(all_poses, "/scratch/whc/hypersim_poses.pt")
 
 
+def check_pose_image_match():
+    img_root = Path("/scratch/omni3d_data/ml-hypersim/hypersim")
+    all_poses = torch.load("./hypersim_poses.pt")
+    scenes = list(sorted(all_poses.keys()))
+
+    for sn in scenes:
+        trajs = list(sorted(all_poses[sn].keys()))
+        for tj in trajs:
+            poses = all_poses[sn][tj]
+            n = len(poses)
+            im_dir = img_root / sn / "images" / f"scene_{tj}_final_preview"
+            assert im_dir.is_dir()
+            im_fnames = list(sorted(im_dir.iterdir()))
+            if len(im_fnames) != n:
+                print(f"{sn}/{tj}: {len(im_fnames)} imgs vs {n} poses")
+
+    pass
+
+
 if __name__ == "__main__":
-    load_all_poses()
+    fire.Fire()
