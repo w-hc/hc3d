@@ -50,7 +50,8 @@ def load_single_traj_poses(cam_traj_dir):
     return torch.as_tensor(poses)
 
 
-def parse_cam_traj_csv(fname):
+def parse_cam_traj_names(scene):
+    fname = scene  / "_detail" / "metadata_cameras.csv"
     rows = []
     with open(fname, newline='') as f:
         reader = csv.reader(f)
@@ -62,17 +63,34 @@ def parse_cam_traj_csv(fname):
     return rows
 
 
+def parse_scene_scale(scene) -> float:
+    fname = scene / "_detail" / "metadata_scene.csv"
+    rows = []
+    with open(fname, newline='') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            rows.append(row)
+    
+    ''' example. take the 2nd elem of 2nd row
+    ['parameter_name', 'parameter_value']
+    ['meters_per_asset_unit', '0.02539999969303608']
+    '''
+    scale = float(rows[1][1])
+    return scale
+
+
 def load_all_poses():
     # root = Path("/scratch/omni3d_data/ml-hypersim/hypersim/ai_001_008")
     root = Path("/share/data/2pals/hypersim")
     all_scenes = list(sorted(root.iterdir()))
 
     all_poses = defaultdict(dict)
+    all_scene_scale = {}
 
     for scene in tqdm(all_scenes):
         assert scene.is_dir()
-        cam_traj_csv = scene / "_detail" / "metadata_cameras.csv"
-        trajs = parse_cam_traj_csv(cam_traj_csv)
+        all_scene_scale[scene.name] = parse_scene_scale(scene)
+        trajs = parse_cam_traj_names(scene)
 
         # make sure the naming convention is [cam_00, cam_01, ... cam_99]
         # assert trajs == [f"cam_{i:0>2}" for i in range(len(trajs))], f"{scene.name}: {trajs}"
@@ -89,7 +107,8 @@ def load_all_poses():
     # convert to regular dict
     all_poses = dict(all_poses)
 
-    torch.save(all_poses, "/scratch/whc/hypersim_poses.pt")
+    torch.save(all_poses, "./hypersim_poses.pt")
+    torch.save(all_scene_scale, "./hypersim_scene_scale.pt")
 
 
 def check_pose_image_match():
