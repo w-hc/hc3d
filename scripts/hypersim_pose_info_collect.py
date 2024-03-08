@@ -112,7 +112,8 @@ def load_all_poses():
 
 
 def check_pose_image_match():
-    img_root = Path("/scratch/omni3d_data/ml-hypersim/hypersim")
+    img_root = Path("/scratch/omni3d_data/ml-hypersim/hypersim")  # root for g26
+    img_root = Path("/whc/ml-hypersim/hypersim")  # root for nv
     all_poses = torch.load("./hypersim_poses.pt")
     scenes = list(sorted(all_poses.keys()))
 
