@@ -18,7 +18,8 @@ def rgb256_to_hex(rgb):
     # rgb: list of 3 numbers, each in [0,255]
     # return int('0x%02x%02x%02x' % (rgb[0], rgb[1], rgb[2]), 16)
     R, G, B = rgb
-    return (R << 16) + (G << 8) + B
+    ret = (R << 16) + (G << 8) + B
+    return int(ret)  # make sure the final type is int
 
 
 def img_to_bytes(img, format="PNG", **kwargs):
@@ -223,7 +224,7 @@ class CameraCone():
 
         color = np.array(color)
         assert np.issubsctype(color.dtype, np.integer) \
-            and color.min() >= 0 and color.max() < 255
+            and color.min() >= 0 and color.max() < 256
         self.color = color
 
     def as_k3d_lineset(self):
