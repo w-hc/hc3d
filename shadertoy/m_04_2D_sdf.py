@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from utils import (
-    entry, device, two_pi, make_tsr, cos, sin, t_max, 
+    entry, device, two_pi, make_tsr, cos, sin, t_max,
     smooth_step, step, fract, mix,
     xy_to_uv
 )
@@ -153,47 +153,54 @@ def uv_sdf_flat_ruler(xy_coords, t):
     # teeth start ratio
     t_s, t_m, t_l = 0.35, 0.65, 1.0
 
-    ticks = torch.round(xs / inc).type(torch.int)
-    ticks_x = ticks * inc
+    def sdist_teeth(end, along_x=True, sign=-1):
+        '''
+        if along x, then seg a = [tick, end], b = [tick, end + sign*size]
+        if along y,          a = [end, tick], b = [end + sign*size, tick]
 
-    end = 0.9
-    y_end = end * ones
+        size based on tick index.
+        default small tooth; every 5th a med tooth, 10th a large tooth
+        sign decides which direction the teeth grow.
 
-    y_start = (end - t_s*teeth) * ones
-    y_start = torch.where(torch.remainder(ticks, 5) == 0, end - t_m*teeth, y_start)
-    y_start = torch.where(torch.remainder(ticks, 10) == 0, end - t_l*teeth, y_start)
+        Note that swapping a, b has no effect on sdf value. segment_sdf
+        is determined once the two ends are settled.
+        '''
+        if along_x:
+            ticks = torch.round(xs / inc).type(torch.int)
+        else:
+            ticks = torch.round(ys / inc).type(torch.int)
 
-    ticks_start = torch.stack([ticks_x, y_start], axis=0)
-    ticks_end = torch.stack([ticks_x, y_end], axis=0)
+        sizes = t_s * teeth * ones
+        sizes = torch.where(
+            torch.remainder(ticks, 5 ) == 0, t_m * teeth, sizes
+        )
+        sizes = torch.where(
+            torch.remainder(ticks, 10) == 0, t_l * teeth, sizes
+        )
 
-    sdists_horizontal = sdf_segment(
-        xy_coords.T, ticks_start, ticks_end
-    ) - segment_d
+        ticks_coord = ticks * inc
 
-    ticks = torch.round(ys / inc).type(torch.int)
-    ticks_y = ticks * inc
+        if along_x:
+            seg_a = torch.stack([ticks_coord, end * ones], axis=0)
+            seg_b = torch.stack([ticks_coord, end + sign*sizes], axis=0)
+        else:
+            seg_a = torch.stack([end * ones, ticks_coord], axis=0)
+            seg_b = torch.stack([end + sign*sizes, ticks_coord], axis=0)
 
-    end = 0.8
-    x_end = end * ones
+        sdists = sdf_segment(xy_coords.T, seg_a, seg_b) - segment_d
+        return sdists
 
-    x_start = (end - t_s*teeth) * ones
-    x_start = torch.where(torch.remainder(ticks, 5) == 0, end - t_m*teeth, x_start)
-    x_start = torch.where(torch.remainder(ticks, 10) == 0, end - t_l*teeth, x_start)
+    sdists = 100 * ones  # large init
+    sdists = torch.minimum(sdists, sdist_teeth(0.8, along_x=True, sign=-1))
+    sdists = torch.minimum(sdists, sdist_teeth(-0.8, along_x=True, sign=1))
 
-    ticks_start = torch.stack([x_start, ticks_y], axis=0)
-    ticks_end = torch.stack([x_end, ticks_y], axis=0)
+    sdists = torch.minimum(sdists, sdist_teeth(0.8, along_x=False, sign=-1))
+    sdists = torch.minimum(sdists, sdist_teeth(-0.8, along_x=False, sign=1))
 
-    sdists_vertical = sdf_segment(
-        xy_coords.T, ticks_start, ticks_end
-    ) - segment_d
-
-    sdists = torch.minimum(sdists_horizontal, sdists_vertical)
     sdists = smooth_step(0, 0.005, sdists)
-
     colors = mix(
         make_tsr([0.65, 0.85, 1.0]), make_tsr([0.9, 0.6, 0.3]), sdists.unsqueeze(-1)
     )
-
     return colors
 
 
