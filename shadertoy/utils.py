@@ -12,8 +12,8 @@ two_pi = 2 * pi  # frequently used constant
 
 def entry(
     shading_func,
-    canvas_wh=(256, 128), num_frames=1, fps=1,
-    fname="out", batch_size=4096 * 100,
+    canvas_wh=(256, 128), num_frames=1, fps=1, batch_size=4096 * 100,
+    fname="out", return_raw_frames=False
 ):
     W, H = canvas_wh
     n = W * H
@@ -34,12 +34,15 @@ def entry(
         rgbs = rgbs.reshape(H, W, 3)
         rgbs = (rgbs * 255.).type(torch.uint8).cpu().numpy()
         frames.append(rgbs)
+    frames = np.stack(frames, axis=0)
+
+    if return_raw_frames:
+        return frames
 
     if len(frames) == 1:
-        iio.imwrite(f"{fname}.png", rgbs)
+        iio.imwrite(f"{fname}.png", frames[0])
     else:
         # use imageio to save as video
-        frames = np.stack(frames, axis=0)
         iio.imwrite(f"{fname}.mp4", frames, fps=fps)
 
 
@@ -93,6 +96,11 @@ def fract(xs):
     return xs - torch.floor(xs)
 
 
+def mix(xs, ys, alphas):
+    # return (1. - alphas) * xs + alphas * ys
+    return xs + alphas * (ys - xs)
+
+
 def coords_take(arr, symbols):
     # e.g. "xzxzy" will return tsr of shape [n, 5]
     symb_to_inx = {
@@ -100,3 +108,13 @@ def coords_take(arr, symbols):
     }
     chosen = [symb_to_inx[s] for s in symbols]
     return arr[:, chosen]
+
+
+def xy_to_uv(xy_coords, canvas_wh):
+    '''pixel coords to normalized range
+        [-h, h] -> [-1, 1]
+        [-w, w] -> [-w/h, w/h]
+    '''
+    H = canvas_wh[1]
+    uv = (2. * xy_coords - canvas_wh) / H
+    return uv

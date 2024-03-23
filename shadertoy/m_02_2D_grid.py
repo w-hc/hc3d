@@ -1,5 +1,5 @@
 import torch
-from utils import entry, device, two_pi, make_tsr, cos, sin, t_max, smooth_step, step, fract
+from utils import entry, device, two_pi, make_tsr, cos, sin, t_max, smooth_step, step, fract, xy_to_uv
 
 TIME_FACTOR = 50.
 
@@ -43,7 +43,7 @@ def apply_smooth_logic(xs, ys, logic):
 
 
 def checker(xy_coords, canvas_wh, t):
-    xy_coords = (2. * xy_coords - canvas_wh) / canvas_wh[1]
+    xy_coords = xy_to_uv(xy_coords, canvas_wh)
     xy_coords = xy_coords * (2. + t * TIME_FACTOR)
     xs, ys = period_step(xy_coords, 0.5)
     colors = apply_smooth_logic(xs, ys, "xor")
@@ -52,7 +52,7 @@ def checker(xy_coords, canvas_wh, t):
 
 
 def grid(xy_coords, canvas_wh, t):
-    xy_coords = (2. * xy_coords - canvas_wh) / canvas_wh[1]
+    xy_coords = xy_to_uv(xy_coords, canvas_wh)
     xy_coords = xy_coords * (2. + t * TIME_FACTOR)
     xs, ys = period_step(xy_coords, 0.05)
     colors = apply_smooth_logic(xs, ys, "and")
@@ -74,7 +74,7 @@ def integrated_period_step(xy_coords, dx_dy, p):
 
 
 def checker_antialias(xy_coords, canvas_wh, t):
-    xy_coords = (2. * xy_coords - canvas_wh) / canvas_wh[1]
+    xy_coords = xy_to_uv(xy_coords, canvas_wh)
     xy_coords = xy_coords * (2. + t * TIME_FACTOR)
 
     # dx and dy must go through the same change
@@ -89,7 +89,7 @@ def checker_antialias(xy_coords, canvas_wh, t):
 
 
 def grid_antialias(xy_coords, canvas_wh, t):
-    xy_coords = (2. * xy_coords - canvas_wh) / canvas_wh[1]
+    xy_coords = xy_to_uv(xy_coords, canvas_wh)
     xy_coords = xy_coords * (2. + t * TIME_FACTOR)
 
     # dx and dy must go through the same change
