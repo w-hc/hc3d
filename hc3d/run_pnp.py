@@ -35,7 +35,7 @@ def ortho(xs):
     return cross_product_mats
 
 
-def pnp_calibration(pts_2d, pts_3d):
+def pnp_localization(pts_2d, pts_3d):
     n = pts_2d.shape[0]
 
     pts_2d = ortho(pts_2d)  # [n, 3, 3]
@@ -83,7 +83,7 @@ def main():
     pts_2d = pts_3d @ P.T
     pts_2d = homogenize(pts_2d)
 
-    pred_P = pnp_calibration(pts_2d, pts_3d)
+    pred_P = pnp_localization(pts_2d, pts_3d)
 
     assert np.allclose(P, pred_P)
 
